@@ -12,7 +12,8 @@ class MenuOption(Enum):
     RPM = 3
     THROTTLE = 4
     FUEL = 5
-    CUSTOM = 6
+    POWER = 6
+    CUSTOM = 7
 
 
 class Headers(Enum):
@@ -27,6 +28,7 @@ class Headers(Enum):
     THROTTLE = 8
     FUEL = 9
     TIME = 10
+    POWER = 11
 
 
 colors = [
@@ -52,7 +54,7 @@ def show_file_selector():
 
 def show_menu():
     title = "Input data to graph:"
-    options = ["Temperatures", "Pressures", "Flow", "RPM", "Throttle", "Fuel level", "Custom"]
+    options = ["Temperatures", "Pressures", "Flow", "RPM", "Throttle", "Fuel level", "Power", "Custom"]
     _, index = pick(options, title, indicator="=>")
     return index
 
@@ -107,13 +109,16 @@ def graph(menu_indicator, filename):
         case MenuOption.FUEL.value:
             values = [[float(row[Headers.FUEL.value]) for row in data]]
 
+        case MenuOption.POWER.value:
+            values = [[float(row[Headers.POWER.value]) for row in data]]
+
         case MenuOption.CUSTOM.value:
 
             title = "Select main data to compare to:"
             options = [
                 "TEMP1", "TEMP2", "TEMP3", "TEMP4",
                 "PRESS1", "PRESS2", "FLOW1", "RPM",
-                "THROTTLE", "FUEL", "TIME"
+                "THROTTLE", "FUEL", "TIME", "POWER"
             ]
             _, index = pick(options, title, indicator="=>")
             x = [float(row[index]) for row in data]
