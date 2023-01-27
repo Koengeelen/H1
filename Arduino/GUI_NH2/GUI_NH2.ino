@@ -12,7 +12,7 @@ OneWire oneWire(ONE_WIRE_BUS);      //Temp pin
 DallasTemperature sensors(&oneWire);
 
 //setup de la pantalla
-LiquidCrystal lcd(12,13,31,33,35,37);
+LiquidCrystal lcd(13,12,31,33,35,37);
 
 //Funciones para medir el tiempo
 unsigned long initial_time = 0; unsigned long final_time = 0;
