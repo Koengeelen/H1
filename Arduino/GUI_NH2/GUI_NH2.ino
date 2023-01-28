@@ -7,31 +7,30 @@
 
 
 // setup del onewire para las temperaturas
-#define ONE_WIRE_BUS 10
+#define ONE_WIRE_BUS 11
 OneWire oneWire(ONE_WIRE_BUS);      //Temp pin
 DallasTemperature sensors(&oneWire);
 
 //setup de la pantalla
 LiquidCrystal lcd(13,12,31,33,35,37);
 
+int delay_time = 100;
+
 //Funciones para medir el tiempo
 unsigned long initial_time = 0; unsigned long final_time = 0;
 
 //Pines del joystick
-int VRx = A0; int VRy = A1; int SW = 53;
+int Joystick_x = A0; int Joystick_y = A1; int Joystick_click = 53;
 
 //Variables para la posición en el menú de la pantalla
 int xPosition = 0; int yPosition = 0; int SW_state = 0;
-int mapX = 0; int mapY = 0;
-int SC = 16; int SL = 2;
 int s1 = 0; int s2 = 0;
-int men1 = 0; int men2 = 0; int men = 0;
-volatile int n = 0;   
-int i = 0;
+int men1 = 0; int men2 = 0; int men = 0; 
 
 //acelerador
 float thrtl = 0; int thrtl_pin = A15; float thrtl_value = 0;
 
+//buzzer
 int num_pitidos = 0;
 
 //flow y fuel
@@ -53,16 +52,20 @@ volatile byte rpmcount;
 unsigned int rpm;
 unsigned long timeold;
 
+
 //Función de imprimir el menu
 void menu(){
-  lcd.clear(); lcd.setCursor(1,0); lcd.print("1TEMP");
+  lcd.clear(); 
+  lcd.setCursor(1,0); lcd.print("1TEMP");
   lcd.setCursor(1, 1); lcd.print("3PRES"); 
   lcd.setCursor(8, 0); lcd.print("2THRT");
   lcd.setCursor(8, 1); lcd.print("4RPM");
 }
 
+//Función para imprimir la parte de abajo del menu
 void menu2(){
-  lcd.clear(); lcd.setCursor(1,0); lcd.print("3PRES");
+  lcd.clear(); 
+  lcd.setCursor(1,0); lcd.print("3PRES");
   lcd.setCursor(1, 1); lcd.print("5FUEL"); 
   lcd.setCursor(8, 0); lcd.print("4RPM");
   lcd.setCursor(8, 1); lcd.print("6FLOW");
@@ -72,10 +75,10 @@ void menu2(){
 void rpm_fun(){rpmcount++;}
 
 void pressure(){
-    SW_state = digitalRead(SW);
+    SW_state = digitalRead(Joystick_click);
     delay(100);
     while (SW_state == 1){
-        SW_state = digitalRead(SW);
+        SW_state = digitalRead(Joystick_click);
 
         lcd.print("P1:");
         float P1 = (((analogRead(pres_pin1))*0.0048)-0.5)*175;
@@ -88,39 +91,32 @@ void pressure(){
         lcd.print("KPa");
         lcd.setCursor(0, 1);
         read_send_raspberry();
-        delay(100);
+        update_actuators();
+        delay(delay_time);
         lcd.clear();
     }
 }
 
-
-void count(){n++;}
-
 //Menú para el menú de las RPM
 void Rpm(){
 
-    SW_state = digitalRead(SW);           //Comprobar que el valor es 0
-      while (SW_state == 1){              //Loop para cuando no se hace click en el Joystick
-      SW_state = digitalRead(SW);  
-      
-
-      //Don’t process interrupts during calculations
-      detachInterrupt(0);
-      //Note that this would be 60*1000/(millis() – timeold)*rpmcount if the interrupt
-      //happened once per revolution instead of twice. Other multiples could be used
-      //for multi-bladed propellers or fans
+    SW_state = digitalRead(Joystick_click);           //Comprobar que el valor es 0
+    while (SW_state == 1){              //Loop para cuando no se hace click en el Joystick
+      SW_state = digitalRead(Joystick_click);  
+    
+      detachInterrupt(0);                 //Don’t process interrupts during calculations Note that this would be 60*1000/(millis() – timeold)*rpmcount if the interrupt
+    //                                    //happened once per revolution instead of twice. Other multiples could be usedfor multi-bladed propellers or fans
       rpm = 30*1000/(millis() - timeold)*rpmcount;  
       timeold = millis();
       rpmcount = 0;
 
-      //Restart the interrupt processing
-      attachInterrupt(0, rpm_fun, FALLING);
+      attachInterrupt(0, rpm_fun, FALLING);     //Restart the interrupt processing
 
-
-      delay(100);
+      delay(delay_time);
 
       lcd.print(rpm);
       read_send_raspberry();
+      update_actuators();
       lcd.clear();
       lcd.setCursor(0,0);
 
@@ -132,11 +128,11 @@ void Rpm(){
 //Menú para ver las temperaturas
 void Temp(){
 
-  SW_state = digitalRead(SW);
+  SW_state = digitalRead(Joystick_click);
   while (SW_state == 1){
-    SW_state = digitalRead(SW);                 //Abrir el menú temperatura hasta que se clique el botón del Joystick
+    SW_state = digitalRead(Joystick_click);                 //Abrir el menú temperatura hasta que se clique el botón del Joystick
     sensors.requestTemperatures();
-    SW_state = digitalRead(SW); 
+    SW_state = digitalRead(Joystick_click); 
     lcd.print("T1:");   
     temp1 = sensors.getTempCByIndex(0);                     
     lcd.print(temp1);      //Medir T1 e imprimirlo
@@ -158,58 +154,46 @@ void Temp(){
     lcd.setCursor(0, 0);
 
     read_send_raspberry();
-    delay(100);
+    update_actuators();
+    delay(delay_time);
   }
 }
 
 
 void Throttle(){
 
-  SW_state = digitalRead(SW);
+  SW_state = digitalRead(Joystick_click);
   while (SW_state == 1){
-    SW_state = digitalRead(SW);           //Abrir el menú acelerador hasta que se clique el botón del Joystick
+    SW_state = digitalRead(Joystick_click);           //Abrir el menú acelerador hasta que se clique el botón del Joystick
     lcd.setCursor(0, 0);
     thrtl = analogRead(thrtl_pin);               //Coger el valor del potenciometro
     thrtl = thrtl/(10.23);                //Transformarlo a un porcentaje (0-100)
     lcd.print("MIN  ");       
     lcd.print(thrtl);
     lcd.print("%");
-    if (thrtl < 10){
-      lcd.print(" ");
-    }
+    if (thrtl < 10){lcd.print(" ");}
+
     lcd.print("  MAX");
-    
     lcd.setCursor(0, 1);
 
-    int thrtl2 = thrtl/(6.25);            //Transformar el porcentaje a dieciseisavos para poner una barra de porcentaje de aceleración
-    for (int i = 0; i <= thrtl2; i++){
-    lcd.print(">");                    //Imprimir dicha barra
-    //
-    
-    }
+    int thrtl2 = thrtl/(6.25);                                             //Transformar el porcentaje a dieciseisavos para poner una barra de porcentaje de aceleración
+    for (int i = 0; i <= thrtl2; i++){lcd.print(">");}                     //Imprimir dicha barra}
 
-    servoMotor.write(A2*1.8);
+    float servo_value = analogRead(A15);
+    servoMotor.write(servo_value*90/1023);
 
     lcd.setCursor(0, 0);
-    //Serial.println(SW_state);
-    delay(100);
+    delay(delay_time);
     read_send_raspberry();
+    update_actuators();
     lcd.clear();
 
   }
 }
 
-void update_actuators(){
-  servoMotor.write(A2*1.8);
-  
-}
-
-
-
+void update_actuators(){float servo_value = analogRead(A15); servoMotor.write(servo_value*90/1023);}
 
 void read_send_raspberry(){
-  //Temperaturas
-
   initial_time = millis();
   temp_sending_counter++;
 
@@ -219,13 +203,12 @@ void read_send_raspberry(){
   temp2 = sensors.getTempCByIndex(1);  Serial.print(temp2);   Serial.print("    ");
   temp3 = sensors.getTempCByIndex(2);  Serial.print(temp3);   Serial.print("    ");
   temp4 = sensors.getTempCByIndex(3);  Serial.print(temp4);   Serial.print("    ");
-  } else{
-
+  } 
+  else{
   Serial.print(temp1);   Serial.print("    ");
   Serial.print(temp2);   Serial.print("    ");
   Serial.print(temp3);   Serial.print("    ");
   Serial.print(temp4);   Serial.print("    ");
-
   }
   
   //Presiones
@@ -252,24 +235,22 @@ void read_send_raspberry(){
 
 
 void check_map_position(){
-    //xPosition = analogRead(VRx);
-    //yPosition = analogRead(VRy);
-    if(mapX < 200 && s1 > 0 ){ //Left
+
+    if(xPosition < 200 && s1 > 0 ){ //Left
           s1 = s1 -7;
         }
-      else if(mapX > 700 && s1 < 14){ //right
+      else if(xPosition > 700 && s1 < 14){ //right     
           s1 = s1 + 7;
         }
-      if(mapY < 200 && s2 > 0){ //up
+      if(yPosition < 200 && s2 > 0){ //up
           s2 = s2 - 1;
         }
-      else if(mapY > 700 && s2 < 3){ //down
+      else if(yPosition > 700 && s2 < 3){ //down
           s2 = s2 + 1;
         }
       if (SW_state == 0){
-        //lcd.print("Click");
         }
-        delay(100);
+        delay(delay_time);
 
       if (s1 == 0){
         men1 = 1;
@@ -314,7 +295,7 @@ void Pitido_corto(){                        //Función para hacer un pitido cort
 
 void setup(){
 
-    servoMotor.attach(10);
+    servoMotor.attach(4);
     servoMotor.write(0);
 
     EasyBuzzer.setPin(50);
@@ -326,7 +307,7 @@ void setup(){
     Pitido_corto();
     Pitido_corto();
 
-    lcd.begin(SC, SL);
+    lcd.begin(16, 2);
     lcd.clear();
 
     Serial.begin(57600); 
@@ -337,10 +318,10 @@ void setup(){
     rpm = 0;
     timeold = 0;
   
-    pinMode(VRx, INPUT);
+    pinMode(Joystick_x, INPUT);
     //pinMode(5, INPUT);
-    pinMode(VRy, INPUT);
-    pinMode(SW, INPUT_PULLUP); 
+    pinMode(Joystick_y, INPUT);
+    pinMode(Joystick_click, INPUT_PULLUP);
 
     sensors.begin(); 
 
@@ -349,38 +330,40 @@ void setup(){
 }
 
 void fuel(){
-  SW_state = digitalRead(SW);           //Comprobar que el valor es 0
+  SW_state = digitalRead(Joystick_click);           //Comprobar que el valor es 0
       while (SW_state == 1){              //Loop para cuando no se hace click en el Joystick
-      SW_state = digitalRead(SW); 
+        SW_state = digitalRead(Joystick_click); 
 
-      fuel_value = analogRead(fuel_pin);  
+        fuel_value = analogRead(fuel_pin);  
        
-
-      read_send_raspberry();
-      delay(100);
-      lcd.clear();
-      lcd.setCursor(0,0);
+        read_send_raspberry();
+        update_actuators();
+        delay(delay_time);
+        lcd.clear();
+        lcd.setCursor(0,0);
 
       }
 }
+
 void flow(){
-  SW_state = digitalRead(SW);           //Comprobar que el valor es 0
+  SW_state = digitalRead(Joystick_click);           //Comprobar que el valor es 0
       while (SW_state == 1){              //Loop para cuando no se hace click en el Joystick
-      SW_state = digitalRead(SW);
+        SW_state = digitalRead(Joystick_click);
 
-      flow_value = analogRead(flow_pin);  
+        flow_value = analogRead(flow_pin);  
 
 
-      flow_value = flow_value*1.014*0.004887;
+        flow_value = flow_value*1.014*0.004887;
 
-      read_send_raspberry();
+        read_send_raspberry();
+        update_actuators();
       
-      lcd.setCursor(0,0);
-      lcd.print("Flow: ");
-      lcd.print(flow_value);
-      lcd.print(" cm3/s");
-      delay(100);
-      lcd.clear();
+        lcd.setCursor(0,0);
+        lcd.print("Flow: ");
+        lcd.print(flow_value);
+        lcd.print(" cm3/s");
+        delay(delay_time);
+        lcd.clear();
 
       }
 }
@@ -388,22 +371,15 @@ void flow(){
 
  void loop(){
 
-    if (men < 10){
-    menu();
-    }
-    else{
-    menu2();
-    }
+    if (men < 10){menu();}
+    else{menu2();}
 
     EasyBuzzer.update();
 
-    delay(20);
-    xPosition = analogRead(VRx);
-    yPosition = analogRead(VRy);
-    SW_state = digitalRead(SW);
-
-    mapX = xPosition;
-    mapY = yPosition;
+    delay(20);                                //Revisar para que vale este delay
+    xPosition = analogRead(Joystick_x);
+    yPosition = analogRead(Joystick_y);
+    SW_state = digitalRead(Joystick_click);
       
     lcd.setCursor(s1, s2);
     lcd.print(">");
@@ -414,49 +390,48 @@ void flow(){
 
     if (SW_state == 0){
     
-    Pitido_corto();
+      Pitido_corto();
 
-    if (men == 1){
-      lcd.setCursor(0,0);
-      lcd.clear();
-      Temp();
+      if (men == 1){
+        lcd.setCursor(0,0);
+        lcd.clear();
+        Temp();
       //Hacer void para temperatura
-    }
-    else if (men == 2){
-      lcd.setCursor(0,0);
-      lcd.clear();
-      lcd.print("Pres");
-      pressure();
+      }
+      else if (men == 2){
+        lcd.setCursor(0,0);
+        lcd.clear();
+        lcd.print("Pres");
+        pressure();
       //Hacer void para presiones
-    }
-    else if (men == 3){
-      lcd.setCursor(0,0);
-      lcd.clear();
-      Throttle();
+      }
+      else if (men == 3){
+        lcd.setCursor(0,0);
+        lcd.clear();
+        Throttle();
       //Hacer void para acelerador
-    }
-    else if (men == 4){
-      lcd.setCursor(0,0);
-      lcd.clear();
-      Rpm();
+      }
+      else if (men == 4){
+        lcd.setCursor(0,0);
+        lcd.clear();
+        Rpm();
     //Hacer void para rpm
-    }
-    else if (men == 11){
-      lcd.setCursor(0,0);
-      lcd.clear();
-      fuel();
+      }
+      else if (men == 11){
+        lcd.setCursor(0,0);
+        lcd.clear();
+        fuel();
     //Hacer void para rpm
-    }
-    else if (men == 13){
-      lcd.setCursor(0,0);
-      lcd.clear();
-      flow();
+      }
+      else if (men == 13){
+        lcd.setCursor(0,0);
+        lcd.clear();
+        flow();
     //Hacer void para rpm
     }
   }
 
-    read_send_raspberry();
-    lcd.clear();
-    
-
+  read_send_raspberry();        //Cada vez que termina un loop, actualizar todos los datos y enviarlos a la raspberry.
+  update_actuators();
+  lcd.clear();
  }
