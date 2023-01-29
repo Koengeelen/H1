@@ -87,7 +87,7 @@ def plot(x, values):
 def graph(menu_indicator, filename):
 
 
-while True:
+
     input_state = GPIO.input(10)
     if input_state:
         now = datetime.datetime.now()
@@ -170,9 +170,10 @@ while True:
 
         plot(x, values)
 
-
-        if __name__ == "__main__":
+while True:
+    
+    if __name__ == "__main__":
 
         # while True:
-        main()
+    main()
 
