@@ -5,15 +5,9 @@ from enum import Enum
 from pick import pick
 import serial
 import csv
-import re
 import datetime
-import time
-import RPi.GPIO as GPIO 
+import RPi.GPIO as GPIO
 
-ser = serial.Serial('/dev/ttyACM0' , 9600)
-
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(10, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
 class MenuOption(Enum):
     TEMPERATURE = 0
@@ -70,9 +64,26 @@ def show_menu():
 
 
 def main():
-    filename = show_file_selector()
-    menu_indicator = show_menu()
-    graph(menu_indicator, filename)
+    init_GPIO()
+    if GPIO.input(10):
+        date_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"{date_time}.csv"
+
+        ser = serial.Serial('/dev/ttyACM0', 9600)
+        with open(filename, mode="w") as csvfile:
+            write = csv.writer(csvfile)
+            for i in range(100):
+                write.writerow(ser.readline().decode("utf-8").split("    "))
+                print(i)
+    else:
+        filename = show_file_selector()
+        menu_indicator = show_menu()
+        graph(menu_indicator, filename)
+
+
+def init_GPIO():
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(10, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
 
 def plot(x, values):
@@ -85,35 +96,6 @@ def plot(x, values):
 
 
 def graph(menu_indicator, filename):
-
-
-
-    input_state = GPIO.input(10)
-    if input_state:
-        now = datetime.datetime.now()
-        date_time = now.strftime("%Y-%m-%d_%H-%M-%S")
-
-        filename = f"{date_time}.csv"
-
-        count = 0
-
-        for i in range(100):
-            data = ser.readline()
-            data=data.decode("utf-8")
-            list_data = data.split("    ")
-
-            count+=1
-            print(count)
-
-
-        with open(filename, "a" , newline"\n") as csvfile:
-            write = csv.writer(csvfile)
-            write.writerow(list_data)
-        
-        #Code to read form the arduino and save a document as a csv
-
-    else:
-    
     with open(f"{filename}") as f:
         reader = csv.reader(f)
         data = list(reader)
@@ -170,10 +152,8 @@ def graph(menu_indicator, filename):
 
         plot(x, values)
 
+
 while True:
-    
     if __name__ == "__main__":
 
-        # while True:
-    main()
-
+        main()
