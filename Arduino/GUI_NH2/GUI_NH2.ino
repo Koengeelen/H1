@@ -81,12 +81,12 @@ void pressure(){
         SW_state = digitalRead(Joystick_click);
 
         lcd.print("P1:");
-        float P1 = (((analogRead(pres_pin1))*0.0048)-0.5)*175;
+        float P1 = (((analogRead(pres_pin1))*0.00488)-0.00488)*175;
         lcd.print(P1);
         lcd.print("KPa");
         lcd.setCursor(0, 1);
         lcd.print("P2:");
-        float P2 = (((analogRead(pres_pin2))*0.0048)-0.5)*175;
+        float P2 = (((analogRead(pres_pin2))*0.00488)-0.00488)*175;
         lcd.print(P2);
         lcd.print("KPa");
         lcd.setCursor(0, 1);
@@ -190,6 +190,7 @@ void Throttle(){
 
   }
 }
+
 
 void update_actuators(){float servo_value = analogRead(A15); servoMotor.write(servo_value*90/1023);}
 
@@ -366,7 +367,7 @@ void flow(){
         lcd.clear();
 
       }
-}
+
 
 
  void loop(){
@@ -434,4 +435,5 @@ void flow(){
   read_send_raspberry();        //Cada vez que termina un loop, actualizar todos los datos y enviarlos a la raspberry.
   update_actuators();
   lcd.clear();
+
  }
