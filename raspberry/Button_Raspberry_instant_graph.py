@@ -1,159 +1,49 @@
 
-from matplotlib import pyplot as plt
-import glob
-from enum import Enum
-from pick import pick
-import serial
-import csv
-import datetime
-import RPi.GPIO as GPIO
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+# use ggplot style for more sophisticated visuals
+plt.style.use('ggplot')
+
+from pylive import live_plotter
+import numpy as np
 
 
-class MenuOption(Enum):
-    TEMPERATURE = 0
-    PRESSURE = 1
-    FLOW = 2
-    RPM = 3
-    THROTTLE = 4
-    FUEL = 5
-    POWER = 6
-    CUSTOM = 7
+
+def live_plotter(x_vec,y1_data,line1,identifier='',pause_time=0.1):
+    if line1==[]:
+        # this is the call to matplotlib that allows dynamic plotting
+        plt.ion()
+        fig = plt.figure(figsize=(13,6))
+        ax = fig.add_subplot(111)
+        # create a variable for the line so we can later update it
+        line1, = ax.plot(x_vec,y1_data,'-o',alpha=0.8)        
+        #update plot label/title
+        plt.ylabel('Y Label')
+        plt.title('Title: {}'.format(identifier))
+        plt.show()
+    
+    # after the figure, axis, and line are created, we only need to update the y-data
+    line1.set_ydata(y1_data)
+    # adjust limits if new data goes beyond bounds
+    if np.min(y1_data)<=line1.axes.get_ylim()[0] or np.max(y1_data)>=line1.axes.get_ylim()[1]:
+        plt.ylim([np.min(y1_data)-np.std(y1_data),np.max(y1_data)+np.std(y1_data)])
+    # this pauses the data so the figure/axis can catch up - the amount of pause can be altered above
+    plt.pause(pause_time)
+    
+    # return line so we can update it again in the next iteration
+    return line1
 
 
-class Headers(Enum):
-    TEMP1 = 0
-    TEMP2 = 1
-    TEMP3 = 2
-    TEMP4 = 3
-    PRESS1 = 4
-    PRESS2 = 5
-    FLOW1 = 6
-    RPM = 7
-    THROTTLE = 8
-    FUEL = 9
-    TIME = 10
-    POWER = 11
-
-
-colors = [
-    "red",
-    "blue",
-    "green",
-    "orange",
-    "yellow",
-    "purple",
-    "pink",
-    "black",
-    "gray",
-    "brown"
-]
-
-
-def show_file_selector():
-    title = "Choose source file:"
-    options = glob.glob("./*.csv")
-    option, _ = pick(options, title, indicator="=>")
-    return option
-
-
-def show_menu():
-    title = "Input data to graph:"
-    options = ["Temperatures", "Pressures", "Flow", "RPM", "Throttle", "Fuel level", "Power", "Custom"]
-    _, index = pick(options, title, indicator="=>")
-    return index
-
-
-def main():
-    init_GPIO()
-    if GPIO.input(10):
-        date_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        filename = f"{date_time}.csv"
-
-        ser = serial.Serial('/dev/ttyACM0', 9600)
-        with open(filename, mode="w") as csvfile:
-            write = csv.writer(csvfile)
-            for i in range(100):
-                write.writerow(ser.readline().decode("utf-8").split("    "))
-                print(i)
-    else:
-        filename = show_file_selector()
-        menu_indicator = show_menu()
-        graph(menu_indicator, filename)
-
-
-def init_GPIO():
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(10, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-
-
-def plot(x, values):
-    color = 0
-    _, ax = plt.subplots()
-    for value in values:
-        ax.plot(x, value, color=colors[color], linewidth=2)
-        color += 1
-    plt.show()
-
-
-def graph(menu_indicator, filename):
-    with open(f"{filename}") as f:
-        reader = csv.reader(f)
-        data = list(reader)
-
-        x = [float(row[Headers.TIME.value]) for row in data]
-
-        match menu_indicator:
-            case MenuOption.TEMPERATURE.value:
-                values = [
-                    [float(row[Headers.TEMP1.value]) for row in data],
-                    [float(row[Headers.TEMP2.value]) for row in data],
-                    [float(row[Headers.TEMP3.value]) for row in data],
-                    [float(row[Headers.TEMP4.value]) for row in data],
-                ]
-
-            case MenuOption.PRESSURE.value:
-                values = [
-                    [float(row[Headers.PRESS1.value]) for row in data],
-                    [float(row[Headers.PRESS2.value]) for row in data],
-                ]
-
-            case MenuOption.FLOW.value:
-                values = [[float(row[Headers.FLOW1.value]) for row in data]]
-
-            case MenuOption.RPM.value:
-                values = [[float(row[Headers.RPM.value]) for row in data]]
-
-            case MenuOption.THROTTLE.value:
-                values = [[float(row[Headers.THROTTLE.value]) for row in data]]
-
-            case MenuOption.FUEL.value:
-                values = [[float(row[Headers.FUEL.value]) for row in data]]
-
-            case MenuOption.POWER.value:
-                values = [[float(row[Headers.POWER.value]) for row in data]]
-
-            case MenuOption.CUSTOM.value:
-
-                title = "Select main data to compare to:"
-                options = [
-                    "TEMP1", "TEMP2", "TEMP3", "TEMP4",
-                    "PRESS1", "PRESS2", "FLOW1", "RPM",
-                    "THROTTLE", "FUEL", "TIME", "POWER"
-                ]
-                _, index = pick(options, title, indicator="=>")
-                x = [float(row[index]) for row in data]
-
-                title = 'Select additional data to compare: '
-                selected = pick(options, title, multiselect=True, min_selection_count=1)
-
-                values = []
-                for s in selected:
-                    values.append([float(row[s[1]]) for row in data])
-
-        plot(x, values)
-
+size = 100
+x_vec = np.linspace(0,1,size+1)[0:-1]
+y_vec = np.random.randn(len(x_vec))
+line1 = []
 
 while True:
-    if __name__ == "__main__":
+    rand_val = np.random.randn(1)
+    y_vec[-1] = rand_val
+    line1 = live_plotter(x_vec,y_vec,line1)
+    y_vec = np.append(y_vec[1:],0.0)
 
-        main()
