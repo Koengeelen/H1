@@ -1,0 +1,13 @@
+This proyect is based on the controll, monitoring and processing of data extracted from a small 2 stroke engine.
+The proyect is divided in three parts, the first one is the arduino code that controlls a small interactive module to act on the engine and gather all of the data.
+The next part is the raspberry code, which gathers all of the information to be saved and displayed live in another small module that integrates a small display.
+Finally there is the 3D models of every part in the engine to make designs to add sensors or improve the engine.
+
+  Arduino:
+    
+  
+  Raspberry:
+  
+  3D Model:
+    The 3D model includes a general assembly of all of the parts along with evary part organised by groups. 
+    It also includes the 3D models for both the arduino and the raspberry modules.
