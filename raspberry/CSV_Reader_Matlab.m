@@ -1,6 +1,4 @@
 
+H = tf([10 10],[1 2110 221000 2000000 0]);
 
-Array=csvread('sample.csv');
-col1 = Array(:, 1);
-col2 = Array(:, 2);
-plot(col1, col2)
+bode(H)
